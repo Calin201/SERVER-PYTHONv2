@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MJPEG Stream Processor with Person Detection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1, h2 {
+            color: #2c3e50;
+        }
+        .stream-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .stream-box {
+            flex: 1;
+            min-width: 300px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 15px;
+        }
+        .stream-title {
+            margin-top: 0;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .stream-frame {
+            width: 100%;
+            height: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .controls {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .control-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"], 
+        input[type="number"],
+        input[type="range"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 5px;
+        }
+        input[type="checkbox"] {
+            margin-right: 5px;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .status {
+            padding: 10px;
+            background-color: #e7f4ff;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        .slider-container {
+            display: flex;
+            align-items: center;
+        }
+        .slider-value {
+            min-width: 40px;
+            text-align: center;
+            margin-left: 10px;
+        }
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: #2196F3;
+        }
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .toggle-label {
+            margin-left: 10px;
+        }
+        .lidar-container {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .lidar-value {
+            font-size: 48px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin: 10px 0;
+        }
+        .lidar-unit {
+            font-size: 24px;
+            color: #7f8c8d;
+        }
+        .lidar-status {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .status-connected {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .status-disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        
+        .device-list {
+            margin-top: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            background-color: #f9f9f9;
+        }
+        
+        .device-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .device-item:last-child {
+            border-bottom: none;
+        }
+        
+        .device-info {
+            flex-grow: 1;
+        }
+        
+        .device-actions {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .device-actions button {
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+        
+        .no-devices {
+            text-align: center;
+            color: #888;
+            padding: 10px;
+        }
+        
+        .input-button-group {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .input-button-group input {
+            flex-grow: 1;
+        }
+        
+        /* Stiluri pentru box-ul informațional de detecție */
+        .detection-info-box {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .detection-info-box h3 {
+            margin-top: 0;
+            color: #2c3e50;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .detection-content {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            min-height: 50px;
+        }
+        
+        .detection-item {
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            padding: 8px 12px;
+            display: inline-flex;
+            align-items: center;
+            border-left: 4px solid #3498db;
+            font-weight: 500;
+        }
+        
+        .detection-count {
+            background-color: #3498db;
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 8px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .loading-message {
+            color: #6c757d;
+            text-align: center;
+            width: 100%;
+            padding: 10px;
+        }
+        
+        .no-detections-message {
+            color: #6c757d;
+            text-align: center;
+            width: 100%;
+            padding: 10px;
+        }
+    
+                /* ESP32-CAM Styles Start */
+                body {
+                    /* font-family: Arial, sans-serif; /* Existing body style might be preferred */
+                    /* margin: 0; */
+                    /* padding: 20px; */
+                    text-align: center; /* Applied from ESP */
+                    /* background-color: #f0f0f0; */ /* ESP background, might conflict */
+                }
+                .esp-cam-container {
+                    max-width: 800px;
+                    margin: 20px auto;
+                    background: white;
+                    padding: 20px;
+                    border-radius: 8px;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                }
+                .esp-cam-container h1 {
+                    color: #333;
+                }
+                .esp-cam-container img#stream {
+                    max-width: 100%;
+                    height: auto;
+                    border: 1px solid #ddd;
+                    border-radius: 4px;
+                    margin-bottom: 20px;
+                }
+                .esp-cam-container .data-container {
+                    margin-top: 20px;
+                    padding: 10px;
+                    background: #f9f9f9;
+                    border-radius: 4px;
+                }
+                .esp-cam-container .button-container {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    gap: 10px;
+                }
+                .esp-cam-container .button-row {
+                    display: flex;
+                    justify-content: center;
+                    gap: 10px;
+                }
+                .esp-cam-container button {
+                    background-color: #4CAF50;
+                    border: none;
+                    color: white;
+                    padding: 15px 30px;
+                    text-align: center;
+                    text-decoration: none;
+                    display: inline-block;
+                    font-size: 16px;
+                    margin: 5px 2px;
+                    cursor: pointer;
+                    border-radius: 4px;
+                    min-width: 100px;
+                    user-select: none;
+                    -webkit-user-select: none;
+                }
+                .esp-cam-container #btn-forward, .esp-cam-container #btn-backward {
+                    width: 150px;
+                }
+                .esp-cam-container #btn-stop-petoi {
+                    background-color: #f44336;
+                }
+                .esp-cam-container #btn-stop-petoi:hover {
+                    background-color: #d32f2f;
+                }
+                .esp-cam-container button:hover {
+                    background-color: #45a049;
+                }
+                .esp-cam-container #speed-value {
+                    display: inline-block;
+                    min-width: 100px;
+                    font-weight: bold;
+                    margin: 0 10px;
+                }
+                /* ESP32-CAM Styles End */
+</style>
+</head>
+<body>
+    <div class="container">
+        <h1>MJPEG Stream Processor with Person Detection</h1>
+
+        <!-- Start of ESP32-CAM like interface -->
+        <div class="esp-cam-container" style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+            <h1>ESP32-CAM Stream</h1>
+            <div>
+                <div class="stream-toggle-container">
+                    <img id="stream" src="/stream/original" alt="Camera Stream">
+                </div>
+                <div class="toggle-container">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="stream-toggle">
+                        <span class="slider"></span>
+                    </label>
+                    <span class="toggle-label">Show processed stream</span>
+                </div>
+                <script>
+                    document.getElementById('stream-toggle').addEventListener('change', function() {
+                        const streamImg = document.getElementById('stream');
+                        if (this.checked) {
+                            streamImg.src = '/stream/processed';
+                        } else {
+                            streamImg.src = '/stream/original';
+                        }
+                    });
+                </script>
+            </div>
+            <div class="data-container">
+                <h3>Control Petoi</h3>
+                <div class="button-container">
+                    <button id="btn-balance" onclick="sendBTCommand('balance')">Echilibrare</button>
+                    <button id="btn-rest" onclick="sendBTCommand('rest')">Odihna</button>
+                    <button id="btn-sit" onclick="sendBTCommand('sit')">Asezare</button>
+                    <div class="button-row">
+                        <button id="btn-left" onclick="sendBTCommand('tr', 'left')">Stanga</button>
+                        <button id="btn-stop-petoi" onclick="sendBTCommand('rest')">Stop</button>
+                        <button id="btn-right" onclick="sendBTCommand('tr', 'right')">Dreapta</button>
+                    </div>
+                    <div class="button-row">
+                        <button id="btn-forward" onclick="sendBTCommand('wk', 'forward')">Mers inainte</button>
+                        <button id="btn-backward" onclick="sendBTCommand('wk', 'backward')">Mers inapoi</button>
+                    </div>
+                </div>
+                
+                <h3>Comenzi Speciale</h3>
+                <div class="button-container">
+                    <div class="button-row">
+                        <button onclick="sendBTCommand('lifted')">Ridicare</button>
+                        <button onclick="sendBTCommand('pu')">Push-up</button>
+                        <button onclick="sendBTCommand('pee')">Pipi</button>
+                    </div>
+                    <div class="button-row">
+                        <button onclick="sendBTCommand('ff')">Prietenos</button>
+                        <button onclick="sendBTCommand('pd')">Jucaus</button>
+                        <button onclick="sendBTCommand('snf')">Miros</button>
+                    </div>
+                </div>
+                <div class="button-row" style="margin-top: 20px;">
+                    <button id="btn-speed-decrease" onclick="adjustSpeed(-10)">- Viteza</button>
+                    <span id="speed-value">Viteza: 100%</span>
+                    <button id="btn-speed-increase" onclick="adjustSpeed(10)">+ Viteza</button>
+                </div>
+                <button onclick="refreshStream()" style="margin-top: 20px;">Reimprospateaza Stream</button>
+            </div>
+        </div>
+        <!-- End of ESP32-CAM like interface -->
+        
+        <div class="controls">
+            <h2>Stream Settings</h2>
+            <div class="status" id="connection-status">
+                Connection Status: <span id="status-text">Initializing...</span>
+            </div>
+            
+            <div class="control-group">
+                <label for="source-url">Stream URL:</label>
+                <input type="text" id="source-url" placeholder="http://ip-address/stream">
+                <button id="update-source">Update Stream Source</button>
+            </div>
+            
+        </div>
+        
+        <!-- Box informațional pentru afișarea obiectelor detectate -->
+        <div class="detection-info-box">
+            <h3>Objects Detected</h3>
+            <div id="detection-content" class="detection-content">
+                <div class="loading-message">Waiting for detections...</div>
+            </div>
+        </div>
+        
+        <div class="stream-container">
+            <div class="stream-box">
+                <h3 class="stream-title">Original Stream</h3>
+                <img id="original-stream" class="stream-frame" src="/stream/original" alt="Original Stream">
+            </div>
+            <div class="stream-box">
+                <h3 class="stream-title">Processed Stream</h3>
+                <img id="processed-stream" class="stream-frame" src="/stream/processed" alt="Processed Stream">
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Elements
+            const sourceUrlInput = document.getElementById('source-url');
+            const updateSourceBtn = document.getElementById('update-source');
+            const statusText = document.getElementById('status-text');
+            
+            // Update source URL
+            updateSourceBtn.addEventListener('click', function() {
+                const newUrl = sourceUrlInput.value.trim();
+                if (!newUrl) {
+                    alert('Please enter a valid URL');
+                    return;
+                }
+                
+                fetch('/api/source', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ url: newUrl })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        alert('Source URL updated successfully');
+                    } else {
+                        alert('Error updating source URL: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error updating source URL');
+                });
+            });
+            
+            
+            // Periodically update connection status
+            function updateStatus() {
+                fetch('/api/settings')
+                .then(response => response.json())
+                .then(data => {
+                    statusText.textContent = data.connection_status;
+                    
+                    // Update status box color based on connection status
+                    const statusBox = document.getElementById('connection-status');
+                    if (data.connection_status === 'Connected') {
+                        statusBox.style.backgroundColor = '#d4edda';
+                    } else if (data.connection_status === 'Connecting...' || 
+                               data.connection_status === 'Reconnecting...') {
+                        statusBox.style.backgroundColor = '#fff3cd';
+                    } else {
+                        statusBox.style.backgroundColor = '#f8d7da';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching status:', error);
+                });
+            }
+            
+            // Update status every 2 seconds
+            setInterval(updateStatus, 2000);
+            
+            // Initial status update
+            updateStatus();
+            
+            // Funcție pentru actualizarea informațiilor despre obiectele detectate
+            function updateDetections() {
+                fetch('/api/object_positions')
+                .then(response => response.json())
+                .then(data => {
+                    const detectionContent = document.getElementById('detection-content');
+                    
+                    // Dacă nu există detecții, afișăm un mesaj
+                    if (!data.detections || data.detections.length === 0) {
+                        detectionContent.innerHTML = '<div class="no-detections-message">No objects detected</div>';
+                        return;
+                    }
+                    
+                    // Grupăm detecțiile după clasa lor
+                    const classCounts = {};
+                    data.detections.forEach(detection => {
+                        const className = detection.class;
+                        if (classCounts[className]) {
+                            classCounts[className]++;
+                        } else {
+                            classCounts[className] = 1;
+                        }
+                    });
+                    
+                    // Construim conținutul HTML
+                    let html = '';
+                    for (const [className, count] of Object.entries(classCounts)) {
+                        html += `
+                        <div class="detection-item">
+                            <span class="detection-count">${count}</span>
+                            <span>${className}</span>
+                        </div>
+                        `;
+                    }
+                    
+                    // Adăugăm și FPS dacă este disponibil
+                    if (data.fps) {
+                        html += `
+                        <div class="detection-item" style="margin-left: auto; border-left-color: #2ecc71;">
+                            <span>FPS: ${data.fps.toFixed(1)}</span>
+                        </div>
+                        `;
+                    }
+                    
+                    detectionContent.innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('Error fetching detection data:', error);
+                });
+            }
+            
+            // Actualizăm detecțiile la fiecare secundă
+            setInterval(updateDetections, 1000);
+            
+            // Inițializăm detecțiile
+            updateDetections();
+        });
+    </script>
+
+<script>
+    // Variabile globale pentru control Petoi
+    let currentSpeed = 100; // Viteza intre 0-100%
+    let lastCommandTime = 0; // Pentru a preveni trimiterea prea multor comenzi
+    
+    // Functie pentru a trimite comenzi Bluetooth catre Petoi
+    function sendBTCommand(command, orientation = '') {
+        const now = Date.now();
+        if (now - lastCommandTime < 200) { // Minim 200ms intre comenzi
+            console.log("Comanda ignorata, prea rapid.");
+            return;
+        }
+        lastCommandTime = now;
+        
+        const url = `/bt-control?cmd=${command}&orientation=${orientation}&speed=${currentSpeed}`;
+        console.log(`Trimitere comanda: ${command} ${orientation} Viteza: ${currentSpeed}%`);
+        
+        fetch(url)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Eroare la trimiterea comenzii Bluetooth');
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Raspuns Server:', data);
+            })
+            .catch(error => {
+                console.error('Eroare sendBTCommand:', error);
+            });
+    }
+    
+    // Functie pentru a ajusta viteza
+    function adjustSpeed(change) {
+        currentSpeed = Math.max(0, Math.min(100, currentSpeed + change));
+        const speedValueElement = document.getElementById('speed-value');
+        if (speedValueElement) {
+            speedValueElement.textContent = `Viteza: ${currentSpeed}%`;
+        }
+        console.log(`Viteza ajustata la: ${currentSpeed}%`);
+    }
+    
+    // Functie pentru a reimprospata stream-ul
+    function refreshStream() {
+        const img = document.getElementById('stream');
+        if (img) {
+            img.src = '/stream_processed?' + new Date().getTime();
+            console.log("Stream reimprospatat");
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', (event) => {
+        const streamImageForErrorHandling = document.getElementById('stream');
+        if (streamImageForErrorHandling) {
+            streamImageForErrorHandling.onerror = function() {
+                console.log('Eroare la incarcarea stream-ului. Reincercare automata...');
+                setTimeout(refreshStream, 1000); // Reincearca dupa 1 secunda
+            };
+        }
+
+        // Adauga suport pentru taste pentru controlul Petoi
+        document.addEventListener('keydown', function(event) {
+            if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
+                return; // Nu prelua tastele daca utilizatorul tasteaza intr-un input
+            }
+
+            let commandSent = true;
+            switch(event.key) {
+                case 'ArrowUp': sendBTCommand('wk', 'forward'); break;
+                case 'ArrowDown': sendBTCommand('wk', 'backward'); break;
+                case 'ArrowLeft': sendBTCommand('tr', 'left'); break;
+                case 'ArrowRight': sendBTCommand('tr', 'right'); break;
+                case ' ': sendBTCommand('balance'); break; // Space for balance/stop
+                case 'r': case 'R': sendBTCommand('rest'); break;
+                case 's': case 'S': sendBTCommand('sit'); break;
+                case 'l': case 'L': sendBTCommand('lifted'); break;
+                case 'p': case 'P': sendBTCommand('pu'); break;
+                case '=': case '+': adjustSpeed(10); break;
+                case '-': case '_': adjustSpeed(-10); break;
+                default: commandSent = false; break;
+            }
+
+            if (commandSent) {
+                event.preventDefault();
+            }
+        });
+    });
+</script>
+</body>
+</html>

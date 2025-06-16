@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Control Petoi & Detecție Persoane</title>
+
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons (pentru săgeți / pictograme) -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --danger: #e74c3c;
+            --petoi-orange: #ffa500;
+            --petoi-bg: #fdfdfd;
+        }
+        body {
+            background-color: var(--petoi-bg);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        header {
+            background: var(--primary);
+            color: #fff;
+        }
+        .video-card img {
+            width: 100%;
+            height: auto;
+        }
+        .command-btn {
+            min-width: 80px;
+        }
+        .command-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: .5rem;
+        }
+        .control-btn {
+            width: 70px;
+            height: 70px;
+            font-size: 1.5rem;
+        }
+        /*  Stop button emphasised  */
+        .btn-stop {
+            background-color: var(--danger);
+            color: #fff;
+        }
+        .btn-stop:hover {background-color:#c0392b;}
+    </style>
+</head>
+<body>
+    <main class="container-fluid flex-fill">
+        <!-- Video streams row -->
+        <div class="row g-2 mb-2 justify-content-center">
+            <div class="col-md-4">
+                <!-- Original stream card -->
+                <div class="card video-card shadow-sm">
+                    <div class="card-header bg-light fw-semibold">Original</div>
+                    <img id="originalStream" src="{{ url_for('stream_original') }}" class="card-img-bottom" alt="Flux original">
+                </div>
+            </div>
+            <div class="col-md-4">
+                <!-- Processed stream card -->
+                <div class="card video-card shadow-sm">
+                    <div class="card-header bg-light fw-semibold">Processed</div>
+                    <img id="processedStream" src="{{ url_for('stream_processed') }}" class="card-img-bottom" alt="Flux procesat">
+                </div>
+            </div>
+        </div>
+
+        <!-- Detection info row -->
+        <div class="row justify-content-center mt-3">
+            <div class="col-md-8 col-lg-6">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-light fw-semibold">Informații detecție</div>
+                    <div class="card-body">
+                        <p id="detectionStatus" class="mb-2">Se inițializează...</p>
+                        <div id="objectList"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls row -->
+        <div class="row justify-content-center">
+            <div class="col-md-8 col-lg-6">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header bg-light fw-semibold">Controale Robot Petoi</div>
+                    <div class="card-body d-flex flex-column">
+
+                        <h6 class="fw-semibold">Moduri deplasare</h6>
+                        <div class="d-flex justify-content-center mb-3">
+                            <div class="form-check form-check-inline mx-3">
+                                <input class="form-check-input" type="radio" name="gaitMode" id="walkMode" value="wk" checked>
+                                <label class="form-check-label" for="walkMode">Walk</label>
+                            </div>
+                            <div class="form-check form-check-inline mx-3">
+                                <input class="form-check-input" type="radio" name="gaitMode" id="crouchMode" value="cr">
+                                <label class="form-check-label" for="crouchMode">Crouch</label>
+                            </div>
+                        </div>
+                        <!-- Direction -->
+                        <h6 class="fw-semibold">Mișcare direcțională</h6>
+                        <div class="d-flex flex-column align-items-center mb-3">
+                            <div class="mb-2">
+                                <button class="btn rounded-circle control-btn" style="background-color: var(--petoi-orange); color: #fff;" onclick="sendMove('forward')">
+                                    <i class="bi bi-arrow-up"></i>
+                                </button>
+                            </div>
+                            <div class="d-flex justify-content-center align-items-center">
+                                <button class="btn rounded-circle control-btn me-3" style="background-color: var(--petoi-orange); color: #fff;" onclick="sendMove('left')">
+                                    <i class="bi bi-arrow-left"></i>
+                                </button>
+                                <button class="btn btn-danger rounded-circle control-btn" onclick="sendCommand('balance')">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                                <button class="btn rounded-circle control-btn ms-3" style="background-color: var(--petoi-orange); color: #fff;" onclick="sendMove('right')">
+                                    <i class="bi bi-arrow-right"></i>
+                                </button>
+                            </div>
+                            <div class="mt-2">
+                                <button class="btn rounded-circle control-btn" style="background-color: var(--petoi-orange); color: #fff;" onclick="sendMove('backward')">
+                                    <i class="bi bi-arrow-down"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Postures -->
+                        <h6 class="fw-semibold">Acțiuni speciale</h6>
+                        <div class="command-grid mb-4">
+                            <button class="btn btn-outline-secondary command-btn" onclick="sendCommand('balance')">Balance</button>
+                            <button class="btn btn-outline-secondary command-btn" onclick="sendCommand('sit')">Sit</button>
+                            <button class="btn btn-outline-secondary command-btn" onclick="sendCommand('rest')">Rest</button>
+                            <button class="btn btn-outline-secondary command-btn" onclick="sendCommand('lifted')">Lifted</button>
+                            <button class="btn btn-outline-secondary command-btn" onclick="sendCommand('pu')">Push&nbsp;Up</button>
+                            <button class="btn btn-outline-secondary command-btn" onclick="sendCommand('ff')">Front&nbsp;Flip</button>
+                            <button class="btn btn-outline-secondary command-btn" onclick="sendCommand('pd')">Playdead</button>
+                            <button class="btn btn-outline-secondary command-btn" onclick="sendCommand('pee')">Pee</button>
+                                                    </div>
+
+                        <!-- Gaits -->
+
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        
+    </main>
+
+    <footer class="mt-4 py-3 text-center text-muted small">
+        &copy; 2024 Petoi Control Interface
+    </footer>
+
+    <!-- Bootstrap JS (optional for components) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        const OBJECT_ENDPOINT = '/api/object_positions';
+
+        function sendCommand(command, orientation=null) {
+                        const payload = {command};
+            if (orientation!==null) payload.orientation = orientation;
+            fetch('/bt-control', {
+                method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
+            }).catch(err=>console.error('Eroare trimitere comandă',err));
+        }
+        // Gait-aware move helper
+        function getCurrentGait(){
+            const sel=document.querySelector('input[name="gaitMode"]:checked');
+            return sel?sel.value:'wk';
+        }
+        function sendMove(orientation){
+            const gait=getCurrentGait();
+            sendCommand(gait, orientation);
+        }
+        function sendSliderValue(param,val){sendCommand(`set_${param}`,val)}
+
+        function updateDetectionInfo(){
+            fetch(OBJECT_ENDPOINT)
+            .then(r=>r.json()).then(data=>{
+                const status=document.getElementById('detectionStatus');
+                const list=document.getElementById('objectList');
+                if (data.error){status.textContent=`Eroare: ${data.error}`; list.innerHTML=''; return;}
+                if (data.detections?.length){
+                    status.textContent=`${data.detections.length} obiect(e) detectat(e)`;
+                    list.innerHTML='<ul class="mb-0">'+data.detections.map(d=>`<li>${d.class} (${d.confidence.toFixed(2)}) X:${d.relative_x.toFixed(2)} Y:${d.relative_y.toFixed(2)}</li>`).join('')+'</ul>';
+                }else{status.textContent='Niciun obiect detectat.'; list.innerHTML='';}
+            }).catch(err=>{
+                console.error('Eroare detecții',err);
+            })
+        }
+        setInterval(updateDetectionInfo,2000);
+        document.addEventListener('DOMContentLoaded',updateDetectionInfo);
+    </script>
+</body>
+</html>
